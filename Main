@@ -1,0 +1,121 @@
+import tkinter as tk
+from tkinter import ttk, Label, Entry, Button, filedialog, messagebox
+import pandas as pd
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+
+class SechoirIndustriel:
+    def __init__(self):
+        self.sondes = {}
+
+    def ajouter_sonde(self, nom, x, y, z):
+        self.sondes[nom] = {'position': (x, y, z), 'mesures': []}
+
+    def enregistrer_mesure(self, nom_sonde, valeur):
+        if nom_sonde in self.sondes:
+            self.sondes[nom_sonde]['mesures'].append(valeur)
+        else:
+            print(f"Sonde '{nom_sonde}' non trouvée.")
+
+    def tracer_mesures(self, nom_sonde):
+        if nom_sonde in self.sondes:
+            mesures = self.sondes[nom_sonde]['mesures']
+            position = self.sondes[nom_sonde]['position']
+
+            fig = plt.figure()
+            ax = fig.add_subplot(111, projection='3d')
+            ax.scatter(position[0], position[1], position[2], c='r', marker='o', label='Sonde')
+            ax.set_xlabel('X')
+            ax.set_ylabel('Y')
+            ax.set_zlabel('Z')
+            ax.set_title(f"Mesures de la sonde '{nom_sonde}'")
+            ax.plot(range(1, len(mesures) + 1), mesures, label='Valeurs mesurées')
+
+            plt.legend()
+            plt.show()
+        else:
+            print(f"Sonde '{nom_sonde}' non trouvée.")
+
+    def tracer_graphique_depuis_csv(self, chemin_fichier):
+        try:
+            data = pd.read_csv(chemin_fichier)
+            temps = data['temps']
+            temperature = data['temperature']
+
+            plt.plot(temps, temperature, label='Température en fonction du temps')
+            plt.xlabel('Temps')
+            plt.ylabel('Température')
+            plt.title('Graphique de Température en fonction du Temps')
+            plt.legend()
+            plt.show()
+
+        except Exception as e:
+            messagebox.showerror("Erreur", f"Une erreur s'est produite : {e}")
+
+class InterfaceGraphique:
+    def __init__(self, sechoir):
+        self.sechoir = sechoir
+        self.fenetre = tk.Tk()
+        self.fenetre.title("Interface Sondes Séchoir")
+
+        self.label_nom = Label(self.fenetre, text="Nom de la sonde:")
+        self.label_x = Label(self.fenetre, text="Position X:")
+        self.label_y = Label(self.fenetre, text="Position Y:")
+        self.label_z = Label(self.fenetre, text="Position Z:")
+
+        self.entry_nom = Entry(self.fenetre)
+        self.entry_x = Entry(self.fenetre)
+        self.entry_y = Entry(self.fenetre)
+        self.entry_z = Entry(self.fenetre)
+
+        self.bouton_ajouter = Button(self.fenetre, text="Ajouter Sonde", command=self.ajouter_sonde)
+        self.bouton_tracer = Button(self.fenetre, text="Tracer Mesures", command=self.tracer_mesures)
+        self.bouton_tracer_csv = Button(self.fenetre, text="Tracer depuis CSV", command=self.tracer_depuis_csv)
+
+        self.label_nom.grid(row=0, column=0)
+        self.label_x.grid(row=1, column=0)
+        self.label_y.grid(row=2, column=0)
+        self.label_z.grid(row=3, column=0)
+
+        self.entry_nom.grid(row=0, column=1)
+        self.entry_x.grid(row=1, column=1)
+        self.entry_y.grid(row=2, column=1)
+        self.entry_z.grid(row=3, column=1)
+
+        self.bouton_ajouter.grid(row=4, column=0, columnspan=2, pady=10)
+        self.bouton_tracer.grid(row=5, column=0, columnspan=2, pady=10)
+        self.bouton_tracer_csv.grid(row=6, column=0, columnspan=2, pady=10)
+
+        self.label_selection = Label(self.fenetre, text="Sonde à tracer:")
+        self.label_selection.grid(row=7, column=0)
+
+        self.sondes_combobox = ttk.Combobox(self.fenetre, values=list(self.sechoir.sondes.keys()))
+        self.sondes_combobox.grid(row=7, column=1)
+
+    def ajouter_sonde(self):
+        nom = self.entry_nom.get()
+        x = float(self.entry_x.get())
+        y = float(self.entry_y.get())
+        z = float(self.entry_z.get())
+
+        self.sechoir.ajouter_sonde(nom, x, y, z)
+        self.sondes_combobox['values'] = list(self.sechoir.sondes.keys())
+        messagebox.showinfo("Sonde ajoutée", f"Sonde '{nom}' ajoutée avec succès.")
+
+    def tracer_mesures(self):
+        nom_sonde = self.sondes_combobox.get()
+        self.sechoir.tracer_mesures(nom_sonde)
+
+    def tracer_depuis_csv(self):
+        file_path = filedialog.askopenfilename(filetypes=[("Fichiers CSV", "*.csv")])
+        if file_path:
+            self.sechoir.tracer_graphique_depuis_csv(file_path)
+
+    def demarrer(self):
+        self.fenetre.mainloop()
+
+# Exemple d'utilisation
+sechoir = SechoirIndustriel()
+interface = InterfaceGraphique(sechoir)
+interface.demarrer()
+
