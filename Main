@@ -1,121 +1,84 @@
-import tkinter as tk
-from tkinter import ttk, Label, Entry, Button, filedialog, messagebox
-import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+from matplotlib.animation import FuncAnimation
 
-class SechoirIndustriel:
-    def __init__(self):
-        self.sondes = {}
+# Données fournies
+data = np.array([
+    [80, 82, 83, 79, 68, 0],
+    [75, 81, 83, 78, 67, 0.5],
+    [74, 81, 83, 78, 66, 1],
+    [73, 80, 83, 78, 65, 1.5],
+    [73, 78, 81, 77, 65, 2],
+    [73, 78, 80, 77, 64, 2.5],
+    [72, 78, 80, 77, 64, 3],
+    [72, 77, 80, 77, 63, 3.5],
+    [72, 79, 80, 76, 61, 4],
+    [72, 78, 79, 76, 60, 4.5],
+    [72, 77, 79, 76, 59, 5]
+])
 
-    def ajouter_sonde(self, nom, x, y, z):
-        self.sondes[nom] = {'position': (x, y, z), 'mesures': []}
+# Séparer les données
+sondes_data = data[:, :5]
+temps_data = data[:, 5]
 
-    def enregistrer_mesure(self, nom_sonde, valeur):
-        if nom_sonde in self.sondes:
-            self.sondes[nom_sonde]['mesures'].append(valeur)
-        else:
-            print(f"Sonde '{nom_sonde}' non trouvée.")
+# Positions des sondes dans le séchoir
+sonde_positions = np.array([
+    [0, 0, 0],
+    [1.5, 1.5, 1.5],
+    [3, 3, 3],
+    [3, 3, 0],
+    [0, 0, 3]
+])
 
-    def tracer_mesures(self, nom_sonde):
-        if nom_sonde in self.sondes:
-            mesures = self.sondes[nom_sonde]['mesures']
-            position = self.sondes[nom_sonde]['position']
+# Paramètres du séchoir
+séchoir_dimensions = [3, 3, 3]
 
-            fig = plt.figure()
-            ax = fig.add_subplot(111, projection='3d')
-            ax.scatter(position[0], position[1], position[2], c='r', marker='o', label='Sonde')
-            ax.set_xlabel('X')
-            ax.set_ylabel('Y')
-            ax.set_zlabel('Z')
-            ax.set_title(f"Mesures de la sonde '{nom_sonde}'")
-            ax.plot(range(1, len(mesures) + 1), mesures, label='Valeurs mesurées')
+# Discrétisation de l'espace
+x_vals = np.linspace(0, séchoir_dimensions[0], 100)
+y_vals = np.linspace(0, séchoir_dimensions[1], 100)
+z_vals = np.linspace(0, séchoir_dimensions[2], 100)
 
-            plt.legend()
-            plt.show()
-        else:
-            print(f"Sonde '{nom_sonde}' non trouvée.")
+# Créer une grille pour l'espace tridimensionnel et le temps
+X, Y, Z = np.meshgrid(x_vals, y_vals, z_vals)
 
-    def tracer_graphique_depuis_csv(self, chemin_fichier):
-        try:
-            data = pd.read_csv(chemin_fichier)
-            temps = data['temps']
-            temperature = data['temperature']
+# Créer une figure 3D
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
 
-            plt.plot(temps, temperature, label='Température en fonction du temps')
-            plt.xlabel('Temps')
-            plt.ylabel('Température')
-            plt.title('Graphique de Température en fonction du Temps')
-            plt.legend()
-            plt.show()
+# Initialiser une heatmap vide
+heatmap = ax.scatter(X.flatten(), Y.flatten(), Z.flatten(), c=np.zeros_like(X.flatten()), cmap='viridis', marker='o', s=10)
 
-        except Exception as e:
-            messagebox.showerror("Erreur", f"Une erreur s'est produite : {e}")
+# Ajouter des étiquettes
+ax.set_xlabel('Sonde X')
+ax.set_ylabel('Sonde Y')
+ax.set_zlabel('Sonde Z')
+ax.set_title('Champ de température dans le séchoir avec contribution du temps')
 
-class InterfaceGraphique:
-    def __init__(self, sechoir):
-        self.sechoir = sechoir
-        self.fenetre = tk.Tk()
-        self.fenetre.title("Interface Sondes Séchoir")
+# Fonction pour mettre à jour l'animation
+def update(frame):
+    ax.cla()  # Effacer l'axe à chaque mise à jour
 
-        self.label_nom = Label(self.fenetre, text="Nom de la sonde:")
-        self.label_x = Label(self.fenetre, text="Position X:")
-        self.label_y = Label(self.fenetre, text="Position Y:")
-        self.label_z = Label(self.fenetre, text="Position Z:")
+    # Contribution spatiale avec une fonction gaussienne pour chaque sonde
+    for i in range(sondes_data.shape[1]):
+        spatial_contrib = np.exp(-((X - sonde_positions[i, 0])**2 + (Y - sonde_positions[i, 1])**2 + (Z - sonde_positions[i, 2])**2) / (2 * 1.0**2))
 
-        self.entry_nom = Entry(self.fenetre)
-        self.entry_x = Entry(self.fenetre)
-        self.entry_y = Entry(self.fenetre)
-        self.entry_z = Entry(self.fenetre)
+        # Combinaison de la contribution spatiale et temporelle
+        T_interp_temps = sondes_data[frame, i] * spatial_contrib
+        heatmap = ax.scatter(X.flatten(), Y.flatten(), Z.flatten(), c=T_interp_temps.flatten(), cmap='viridis', marker='o', s=10)
 
-        self.bouton_ajouter = Button(self.fenetre, text="Ajouter Sonde", command=self.ajouter_sonde)
-        self.bouton_tracer = Button(self.fenetre, text="Tracer Mesures", command=self.tracer_mesures)
-        self.bouton_tracer_csv = Button(self.fenetre, text="Tracer depuis CSV", command=self.tracer_depuis_csv)
+    # Ajouter des étiquettes
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+    ax.set_title(f'Champ de température dans le séchoir à t = {temps_data[frame]} heures')
 
-        self.label_nom.grid(row=0, column=0)
-        self.label_x.grid(row=1, column=0)
-        self.label_y.grid(row=2, column=0)
-        self.label_z.grid(row=3, column=0)
+# Calculer l'intervalle entre les frames en millisecondes pour correspondre à 5 secondes pour 30 minutes
+interval_ms = 5 * 1000 / len(temps_data)
 
-        self.entry_nom.grid(row=0, column=1)
-        self.entry_x.grid(row=1, column=1)
-        self.entry_y.grid(row=2, column=1)
-        self.entry_z.grid(row=3, column=1)
+# Créer l'animation avec l'intervalle spécifié
+animation = FuncAnimation(fig, update, frames=len(temps_data), blit=False, interval=interval_ms)
 
-        self.bouton_ajouter.grid(row=4, column=0, columnspan=2, pady=10)
-        self.bouton_tracer.grid(row=5, column=0, columnspan=2, pady=10)
-        self.bouton_tracer_csv.grid(row=6, column=0, columnspan=2, pady=10)
-
-        self.label_selection = Label(self.fenetre, text="Sonde à tracer:")
-        self.label_selection.grid(row=7, column=0)
-
-        self.sondes_combobox = ttk.Combobox(self.fenetre, values=list(self.sechoir.sondes.keys()))
-        self.sondes_combobox.grid(row=7, column=1)
-
-    def ajouter_sonde(self):
-        nom = self.entry_nom.get()
-        x = float(self.entry_x.get())
-        y = float(self.entry_y.get())
-        z = float(self.entry_z.get())
-
-        self.sechoir.ajouter_sonde(nom, x, y, z)
-        self.sondes_combobox['values'] = list(self.sechoir.sondes.keys())
-        messagebox.showinfo("Sonde ajoutée", f"Sonde '{nom}' ajoutée avec succès.")
-
-    def tracer_mesures(self):
-        nom_sonde = self.sondes_combobox.get()
-        self.sechoir.tracer_mesures(nom_sonde)
-
-    def tracer_depuis_csv(self):
-        file_path = filedialog.askopenfilename(filetypes=[("Fichiers CSV", "*.csv")])
-        if file_path:
-            self.sechoir.tracer_graphique_depuis_csv(file_path)
-
-    def demarrer(self):
-        self.fenetre.mainloop()
-
-# Exemple d'utilisation
-sechoir = SechoirIndustriel()
-interface = InterfaceGraphique(sechoir)
-interface.demarrer()
+# Afficher l'animation
+plt.show()
 
