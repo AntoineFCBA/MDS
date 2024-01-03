@@ -1,0 +1,59 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+
+# Données fournies
+data = np.array([
+    [0, 3, 1, 1, 84],
+    [2, 2, 2, 2, 79],
+    [1, 0, 3, 3, 75],
+    [1, 2, 0, 4, 85],
+    [2, 2, 1, 5, 84],
+    [2, 1, 0, 6, 78],
+    [3, 1, 0, 7, 76],
+    [1, 3, 1, 8, 77],
+    [1, 2, 3, 9, 71]
+])
+
+# Séparer les données
+x = data[:, 0]
+y = data[:, 1]
+z = data[:, 2]
+t = data[:, 3]
+T = data[:, 4]
+
+# Paramètres du séchoir
+séchoir_dimensions = [3, 3, 3]
+
+# Discrétisation de l'espace
+x_vals = np.linspace(0, séchoir_dimensions[0], 100)
+y_vals = np.linspace(0, séchoir_dimensions[1], 100)
+z_vals = np.linspace(0, séchoir_dimensions[2], 100)
+
+# Créer une grille pour l'espace tridimensionnel
+X, Y, Z = np.meshgrid(x_vals, y_vals, z_vals)
+
+# Interpolation des données sur la grille avec une fonction gaussienne
+T_interp = np.zeros_like(X)
+for i in range(len(x)):
+    T_interp += T[i] * np.exp(-((X - x[i])**2 + (Y - y[i])**2 + (Z - z[i])**2) / (2 * 1.0**2))
+
+# Créer une figure 3D
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+
+# Tracer le heatmap avec une échelle de couleur personnalisée
+heatmap = ax.scatter(X, Y, Z, c=T_interp, cmap='viridis', marker='o', s=10, vmin=np.min(T), vmax=np.max(T))
+
+# Ajouter une barre de couleur personnalisée
+cbar = fig.colorbar(heatmap, ax=ax, label='Température (°C)')
+
+# Ajouter des étiquettes
+ax.set_xlabel('X')
+ax.set_ylabel('Y')
+ax.set_zlabel('Z')
+ax.set_title('Champ de température dans le séchoir')
+
+# Afficher la figure
+plt.show()
+
