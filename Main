@@ -11,8 +11,8 @@ data = np.array([
     [73, 80, 83, 78, 65, 1.5],
     [73, 78, 81, 77, 65, 2],
     [73, 78, 80, 77, 64, 2.5],
-    [72, 78, 80, 77, 64, 3],
-    [72, 77, 80, 77, 63, 3.5],
+    [22, 28, 20, 27, 24, 3],
+    [22, 27, 20, 27, 23, 3.5],
     [72, 79, 80, 76, 61, 4],
     [72, 78, 79, 76, 60, 4.5],
     [72, 77, 79, 76, 59, 5]
@@ -24,20 +24,20 @@ temps_data = data[:, 5]
 
 # Positions des sondes dans le séchoir
 sonde_positions = np.array([
-    [0, 0, 0],
-    [1.5, 1.5, 1.5],
-    [3, 3, 3],
-    [3, 3, 0],
-    [0, 0, 3]
+    [0, 0, 1.5],
+    [3, 3, 1.5],
+    [3, 0, 1.5],
+    [0, 3, 0],
+    [1.5, 1.5, 1.5]
 ])
 
 # Paramètres du séchoir
 séchoir_dimensions = [3, 3, 3]
 
-# Discrétisation de l'espace
-x_vals = np.linspace(0, séchoir_dimensions[0], 100)
-y_vals = np.linspace(0, séchoir_dimensions[1], 100)
-z_vals = np.linspace(0, séchoir_dimensions[2], 100)
+# Discrétisation de l'espace avec une grille plus fine
+x_vals = np.linspace(0, séchoir_dimensions[0], 10)
+y_vals = np.linspace(0, séchoir_dimensions[1], 10)
+z_vals = np.linspace(0, séchoir_dimensions[2], 10)
 
 # Créer une grille pour l'espace tridimensionnel et le temps
 X, Y, Z = np.meshgrid(x_vals, y_vals, z_vals)
@@ -46,8 +46,15 @@ X, Y, Z = np.meshgrid(x_vals, y_vals, z_vals)
 fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
 
-# Initialiser une heatmap vide
-heatmap = ax.scatter(X.flatten(), Y.flatten(), Z.flatten(), c=np.zeros_like(X.flatten()), cmap='viridis', marker='o', s=10)
+# Créer les objets de tracé une seule fois
+sc = ax.scatter(X.flatten(), Y.flatten(), Z.flatten(), c=np.zeros_like(X.flatten()), cmap='viridis', marker='o', s=20)
+
+# Définir les limites de l'échelle de couleur
+sc.set_clim(0, 90)  # Réglez les limites en fonction de la plage de température attendue
+
+# Ajouter une barre de couleur
+cbar = fig.colorbar(sc, ax=ax, pad=0.1)
+cbar.set_label('Température')
 
 # Ajouter des étiquettes
 ax.set_xlabel('Sonde X')
@@ -65,13 +72,17 @@ def update(frame):
 
         # Combinaison de la contribution spatiale et temporelle
         T_interp_temps = sondes_data[frame, i] * spatial_contrib
-        heatmap = ax.scatter(X.flatten(), Y.flatten(), Z.flatten(), c=T_interp_temps.flatten(), cmap='viridis', marker='o', s=10)
+        sc = ax.scatter(X.flatten(), Y.flatten(), Z.flatten(), c=T_interp_temps.flatten(), cmap='viridis', marker='o', s=10)
 
     # Ajouter des étiquettes
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
     ax.set_zlabel('Z')
     ax.set_title(f'Champ de température dans le séchoir à t = {temps_data[frame]} heures')
+
+    # Mise à jour des données de la barre de couleur
+    sc.set_array(T_interp_temps.flatten())
+    sc.set_clim(0, 90)  # Réglez les limites en fonction de la plage de température attendue
 
 # Calculer l'intervalle entre les frames en millisecondes pour correspondre à 5 secondes pour 30 minutes
 interval_ms = 5 * 1000 / len(temps_data)
@@ -81,4 +92,3 @@ animation = FuncAnimation(fig, update, frames=len(temps_data), blit=False, inter
 
 # Afficher l'animation
 plt.show()
-
