@@ -1,0 +1,10 @@
+def on_scroll(event, ax):
+    if event.inaxes != ax:
+        return
+    if event.button == 'up':
+        ax._dist *= 0.9
+    elif event.button == 'down':
+        ax._dist *= 1.1
+    ax.figure.canvas.draw()
+
+fig.canvas.mpl_connect('scroll_event', lambda event: on_scroll(event, ax))
